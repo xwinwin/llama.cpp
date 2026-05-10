@@ -7,6 +7,7 @@
 #include <fstream>
 #include <sstream>
 #include <filesystem>
+#include <vector>
 
 static std::string rm_leading_dashes(const std::string & str) {
     size_t pos = 0;
@@ -387,7 +388,7 @@ common_presets common_preset_context::load_from_models_dir(const std::string & m
     std::vector<local_model> models;
     auto scan_subdir = [&models](const std::string & subdir_path, const std::string & name) {
         auto files = fs_list(subdir_path, false);
-        common_file_info model_file;
+        std::vector<common_file_info> model_files;
         common_file_info first_shard_file;
         common_file_info mmproj_file;
         for (const auto & file : files) {
@@ -397,17 +398,28 @@ common_presets common_preset_context::load_from_models_dir(const std::string & m
                 } else if (file.name.find("-00001-of-") != std::string::npos) {
                     first_shard_file = file;
                 } else {
-                    model_file = file;
+                    model_files.push_back(file);
                 }
             }
         }
-        // single file model
-        local_model model{
-            /* name        */ name,
-            /* path        */ first_shard_file.path.empty() ? model_file.path : first_shard_file.path,
-            /* path_mmproj */ mmproj_file.path // can be empty
-        };
-        if (!model.path.empty()) {
+
+        if (! model_files.empty()) {
+            for (const auto & file : model_files) {
+                std::string model_name = std::filesystem::path(file.path).stem().string();
+                local_model model {
+                    /* name        */ name + "/" + model_name,
+                    /* path        */ file.path,
+                    /* path_mmproj */ mmproj_file.path // can be empty
+                };
+                models.push_back(model);
+            }
+        } else if (! first_shard_file.path.empty()) {
+            // single file model with mmproj
+            local_model model {
+                /* name        */ name,
+                /* path        */ first_shard_file.path,
+                /* path_mmproj */ mmproj_file.path
+            };
             models.push_back(model);
         }
     };
