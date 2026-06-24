@@ -941,8 +941,6 @@ void server_models::load(const std::string & name, const load_options & opts) {
             }
         });
 
-        std::atomic<bool> child_finished(false);
-
         std::thread stopping_thread([&]() {
             // thread to monitor explicit stop requests; child crash is signalled via child_proc->stopped
             auto is_stopping = [this, &name]() {
@@ -958,7 +956,6 @@ void server_models::load(const std::string & name, const load_options & opts) {
             if (child_proc->stopped.load(std::memory_order_acquire)) {
                 return;
             }
-
             SRV_INF("stopping model instance name=%s\n", name.c_str());
             fprintf(stdin_file, "%s\n", CMD_ROUTER_TO_CHILD_EXIT);
             fflush(stdin_file);
@@ -968,7 +965,6 @@ void server_models::load(const std::string & name, const load_options & opts) {
                 if (!is_stopping() || child_proc->stopped.load(std::memory_order_acquire)) {
                     return;
                 }
-
                 int64_t elapsed = ggml_time_ms() - start_time;
                 if (elapsed >= stop_timeout * 1000) {
                     lk.unlock();
@@ -994,7 +990,6 @@ void server_models::load(const std::string & name, const load_options & opts) {
             stopping_models.erase(name);
             cv_stop.notify_all();
         }
-
         if (stopping_thread.joinable()) {
             stopping_thread.join();
         }
