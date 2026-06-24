@@ -230,6 +230,20 @@
 		}
 	});
 
+	// Live model status and load progress via the /models/sse feed (router mode)
+	$effect(() => {
+		if (!browser) return;
+		if (!isRouterMode()) return;
+
+		untrack(() => {
+			modelsStore.subscribeStatus();
+		});
+
+		return () => {
+			modelsStore.unsubscribeStatus();
+		};
+	});
+
 	// Background MCP server health checks on app load
 	// Fetch enabled servers from settings and run health checks in background
 	$effect(() => {
@@ -312,7 +326,7 @@
 	/>
 
 	<Sidebar.Provider bind:open={sidebarOpen}>
-		<div class="flex h-screen w-full">
+		<div class="flex h-full w-full grow">
 			<Sidebar.Root variant="floating" class="h-full"
 				><SidebarNavigation bind:this={chatSidebar} /></Sidebar.Root
 			>
